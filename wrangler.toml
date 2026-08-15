@@ -1,0 +1,36 @@
+name = "sikatrix-vat-api"
+main = "src/index.ts"
+compatibility_date = "2024-08-14"
+workers_dev = true
+
+[env.staging]
+name = "sikatrix-vat-api-staging"
+route = "https://vat-staging.qzenta.dev/*"
+
+[env.production]
+name = "sikatrix-vat-api"
+route = "https://vat-api.sikatrix.co.za/*"
+
+# Environment variables for x402 payment integration
+[env.staging.vars]
+X402_FACILITATOR = "https://x402.org/facilitator"
+X402_NETWORK = "base-sepolia"
+PRICE_USDC = "3.00"
+SERVICE_HANDLE = "@qzenta/vat-201"
+ENVIRONMENT = "staging"
+PAYTO_ADDRESS = "0x01886487312c7564C1D7188bf1Ff9fa6dF847dd0"
+
+[env.production.vars]
+X402_FACILITATOR = "https://api.x402.dev"
+X402_NETWORK = "base"
+PRICE_USDC = "3.00"
+SERVICE_HANDLE = "@sikatrix/vat-201"
+ENVIRONMENT = "production"
+PAYTO_ADDRESS = ""
+# ⚠️ PAYTO_ADDRESS for production must be a MAINNET wallet, not the testnet address above.
+# Set this before any production deploy — deploying with an empty/testnet address here will
+# either fail or send real USDC nowhere recoverable.
+
+# Secrets (to be set via wrangler secret put)
+# X402_API_KEY
+# X402_WEBHOOK_SECRET
