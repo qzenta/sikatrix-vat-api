@@ -170,6 +170,50 @@ describe('VATCalculator.calculateVATPosition — previously-dropped categories (
   });
 });
 
+describe('VATCalculator.calculateVATPosition — cent rounding (regression coverage)', () => {
+  it('rounds the input VAT sum to cents before subtracting, matching filed-return rounding order', () => {
+    // golden case steelbuild-africa-202606: raw input VAT sums to 62108.475
+    // (20625 acquisitions + 41483.475 imports). Filed return rounds that sum
+    // to 62108.48 THEN subtracts from output VAT — netVAT must come from
+    // (65217.39 - 62108.48) = 3108.91, not from the unrounded
+    // (65217.39 - 62108.475) = 3108.915.
+    const result = calculator.calculateVATPosition([
+      makeTx({ type: TransactionType.TAXABLE_SALE, amount: 434782.61, vatAmount: 65217.39 }),
+      makeTx({ type: TransactionType.IMPORT, amount: 276556.50, vatAmount: 41483.475 }),
+      makeTx({ type: TransactionType.TAXABLE_PURCHASE, amount: 6500.00, vatAmount: 975.00 }),
+      makeTx({ type: TransactionType.TAXABLE_PURCHASE, amount: 131000.00, vatAmount: 19650.00 })
+    ]);
+
+    expect(result.vatPayable).toBe(65217.39);
+    expect(result.vatRecoverable).toBe(62108.48);
+    expect(result.netVAT).toBe(3108.91);
+  });
+
+  it('golden case steelbuild-africa-202606: matches the SARS-filed VAT201 exactly', () => {
+    const result = calculator.calculateVATPosition([
+      makeTx({ type: TransactionType.TAXABLE_SALE, date: new Date('2026-05-31'), description: 'PG METALS PTY LTD - JS0098', amount: 434782.61, vatAmount: 65217.39 }),
+      makeTx({ type: TransactionType.IMPORT, date: new Date('2026-05-22'), description: 'GIANT INTERNATIONAL TRADING CO., LIMITED - GI26042201', amount: 276556.50, vatAmount: 41483.475 }),
+      makeTx({ type: TransactionType.TAXABLE_PURCHASE, date: new Date('2026-06-23'), description: 'ACB FREIGHT - INV0008419', amount: 6500.00, vatAmount: 975.00 }),
+      makeTx({ type: TransactionType.TAXABLE_PURCHASE, date: new Date('2026-05-25'), description: 'ACB FREIGHT - INV0008161', amount: 131000.00, vatAmount: 19650.00 })
+    ]);
+
+    // Filed VAT201, tax period 202606, filedVAT201Ref b97c-121-0a17-4a26-a09w-d5980eb532db
+    expect(result.vatPayable).toBe(65217.39); // field4/13: output VAT
+    expect(result.vatRecoverable).toBe(62108.48); // field15/19: input VAT
+    expect(result.netVAT).toBe(3108.91); // field20: net VAT payable
+  });
+
+  it('does not round when the input VAT sum already lands exactly on a cent', () => {
+    const result = calculator.calculateVATPosition([
+      makeTx({ type: TransactionType.TAXABLE_SALE, amount: 1000, vatAmount: 150 }),
+      makeTx({ type: TransactionType.TAXABLE_PURCHASE, amount: 500, vatAmount: 75 })
+    ]);
+
+    expect(result.vatRecoverable).toBe(75);
+    expect(result.netVAT).toBe(75);
+  });
+});
+
 describe('VATCalculator.calculateVATPosition — exports (zero-rated)', () => {
   it('never charges VAT on exports even if a caller mistakenly sends a non-zero vatAmount', () => {
     const result = calculator.calculateVATPosition([

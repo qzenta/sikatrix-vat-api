@@ -193,12 +193,23 @@ export class VATCalculator {
       }
     }
 
-    const vatPayable = position.totalSuppliesVAT.minus(position.badDebtAllowance);
+    // Output VAT and input VAT are each rounded to cents at the summation step
+    // (not per line item) before being subtracted, matching how SARS-filed
+    // returns are derived — e.g. an unrounded input VAT sum of 62108.475
+    // files as 62108.48, and netVAT is computed from that rounded figure
+    // (65217.39 - 62108.48 = 3108.91), not from the unrounded 62108.475
+    // (which would give a materially different-looking 3108.915).
+    const outputVATRounded = position.totalSuppliesVAT.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const badDebtRounded = position.badDebtAllowance.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const vatPayable = outputVATRounded.minus(badDebtRounded).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
     const vatRecoverable = position.totalAcquisitionsVAT
       .plus(position.totalImportsVAT)
       .plus(position.capitalGoodsVAT)
-      .plus(position.vatRecoveryAdjustment);
-    const netVAT = vatPayable.minus(vatRecoverable);
+      .plus(position.vatRecoveryAdjustment)
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
+    const netVAT = vatPayable.minus(vatRecoverable).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
     return {
       period: new Date().toISOString().split('T')[0],
