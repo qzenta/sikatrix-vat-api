@@ -5,7 +5,6 @@ workers_dev = true
 
 [env.staging]
 name = "sikatrix-vat-api-staging"
-route = "https://vat-staging.qzenta.dev/*"
 
 [env.production]
 name = "sikatrix-vat-api"
